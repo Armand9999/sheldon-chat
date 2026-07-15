@@ -1,0 +1,26 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "SheldonUploadIntake",
+      "Effect": "Allow",
+      "Action": ["s3:PutObject"],
+      "Resource": "arn:aws:s3:::rag-documents-580102501118-us-east-1-an/intake/native/*"
+    },
+    {
+      "Sid": "SheldonReadProcessedAndManifest",
+      "Effect": "Allow",
+      "Action": ["s3:GetObject", "s3:HeadObject"],
+      "Resource": [
+        "arn:aws:s3:::rag-documents-580102501118-us-east-1-an/processed/*",
+        "arn:aws:s3:::rag-documents-580102501118-us-east-1-an/manifest/*"
+      ]
+    },
+    {
+      "Sid": "SheldonCognitoSignIn",
+      "Effect": "Allow",
+      "Action": ["cognito-idp:InitiateAuth"],
+      "Resource": "arn:aws:cognito-idp:us-east-1:580102501118:userpool/us-east-1_gAL8IKyEA"
+    }
+  ]
+}

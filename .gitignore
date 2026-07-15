@@ -1,0 +1,14 @@
+# Python / Lambda
+__pycache__/
+*.zip
+.cursor/
+
+# Next.js (chat/)
+chat/node_modules/
+chat/.next/
+chat/out/
+chat/.env*
+!chat/.env.local.example
+
+# OS
+.DS_Store
