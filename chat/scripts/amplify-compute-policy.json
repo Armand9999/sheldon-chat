@@ -5,22 +5,22 @@
       "Sid": "SheldonUploadIntake",
       "Effect": "Allow",
       "Action": ["s3:PutObject"],
-      "Resource": "arn:aws:s3:::rag-documents-580102501118-us-east-1-an/intake/native/*"
+      "Resource": "arn:aws:s3:::YOUR_BUCKET_NAME/intake/native/*"
     },
     {
       "Sid": "SheldonReadProcessedAndManifest",
       "Effect": "Allow",
       "Action": ["s3:GetObject", "s3:HeadObject"],
       "Resource": [
-        "arn:aws:s3:::rag-documents-580102501118-us-east-1-an/processed/*",
-        "arn:aws:s3:::rag-documents-580102501118-us-east-1-an/manifest/*"
+        "arn:aws:s3:::YOUR_BUCKET_NAME/processed/*",
+        "arn:aws:s3:::YOUR_BUCKET_NAME/manifest/*"
       ]
     },
     {
       "Sid": "SheldonCognitoSignIn",
       "Effect": "Allow",
       "Action": ["cognito-idp:InitiateAuth"],
-      "Resource": "arn:aws:cognito-idp:us-east-1:580102501118:userpool/us-east-1_gAL8IKyEA"
+      "Resource": "arn:aws:cognito-idp:YOUR_REGION:YOUR_ACCOUNT_ID:userpool/YOUR_USER_POOL_ID"
     }
   ]
 }
