@@ -7,18 +7,31 @@ import {
   UserNotFoundException,
 } from "@aws-sdk/client-cognito-identity-provider";
 
-const REGION = process.env.NEXT_PUBLIC_AWS_REGION ?? "us-east-1";
-const CLIENT_ID = process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID ?? "";
-const CLIENT_SECRET = process.env.COGNITO_CLIENT_SECRET ?? "";
+function getRegion(): string {
+  return process.env.NEXT_PUBLIC_AWS_REGION ?? "us-east-1";
+}
 
-const client = new CognitoIdentityProviderClient({ region: REGION });
+function getClientId(): string {
+  return process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID ?? "";
+}
+
+function getClientSecret(): string {
+  return process.env.COGNITO_CLIENT_SECRET ?? "";
+}
+
+const client = new CognitoIdentityProviderClient({ region: getRegion() });
 
 export function cognitoSecretHash(username: string): string {
-  if (!CLIENT_SECRET) {
+  const clientSecret = getClientSecret();
+  const clientId = getClientId();
+  if (!clientSecret) {
     throw new Error("COGNITO_CLIENT_SECRET is not configured");
   }
-  return createHmac("sha256", CLIENT_SECRET)
-    .update(`${username}${CLIENT_ID}`)
+  if (!clientId) {
+    throw new Error("NEXT_PUBLIC_COGNITO_CLIENT_ID is not configured");
+  }
+  return createHmac("sha256", clientSecret)
+    .update(`${username}${clientId}`)
     .digest("base64");
 }
 
@@ -33,24 +46,23 @@ export async function signInWithPassword(
   username: string,
   password: string,
 ): Promise<AuthTokens> {
-  if (!CLIENT_ID) {
+  const clientId = getClientId();
+  if (!clientId) {
     throw new Error("NEXT_PUBLIC_COGNITO_CLIENT_ID is not configured");
   }
 
+  // App clients with a secret always require SECRET_HASH.
   const authParameters: Record<string, string> = {
     USERNAME: username,
     PASSWORD: password,
+    SECRET_HASH: cognitoSecretHash(username),
   };
-
-  if (CLIENT_SECRET) {
-    authParameters.SECRET_HASH = cognitoSecretHash(username);
-  }
 
   try {
     const result = await client.send(
       new InitiateAuthCommand({
         AuthFlow: "USER_PASSWORD_AUTH",
-        ClientId: CLIENT_ID,
+        ClientId: clientId,
         AuthParameters: authParameters,
       }),
     );
@@ -87,18 +99,20 @@ export async function signInWithPassword(
 }
 
 export async function refreshTokens(refreshToken: string, username: string): Promise<AuthTokens> {
+  const clientId = getClientId();
+  if (!clientId) {
+    throw new Error("NEXT_PUBLIC_COGNITO_CLIENT_ID is not configured");
+  }
+
   const authParameters: Record<string, string> = {
     REFRESH_TOKEN: refreshToken,
+    SECRET_HASH: cognitoSecretHash(username),
   };
-
-  if (CLIENT_SECRET) {
-    authParameters.SECRET_HASH = cognitoSecretHash(username);
-  }
 
   const result = await client.send(
     new InitiateAuthCommand({
       AuthFlow: "REFRESH_TOKEN_AUTH",
-      ClientId: CLIENT_ID,
+      ClientId: clientId,
       AuthParameters: authParameters,
     }),
   );
