@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { signInWithPassword } from "@/lib/cognito-server";
 
 export async function POST(request: Request) {
   try {
@@ -14,6 +13,7 @@ export async function POST(request: Request) {
       );
     }
 
+    const { signInWithPassword } = await import("@/lib/cognito-server");
     const tokens = await signInWithPassword(email, password);
     return NextResponse.json({
       ...tokens,

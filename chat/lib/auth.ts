@@ -41,11 +41,37 @@ export async function signIn(email: string, password: string): Promise<void> {
     body: JSON.stringify({ email: email.trim(), password }),
   });
 
-  const data = await res.json();
+  const raw = await res.text();
+  let data: {
+    error?: string;
+    code?: string;
+    username?: string;
+    idToken?: string;
+    accessToken?: string;
+    refreshToken?: string;
+    expiresIn?: number;
+  } = {};
+  try {
+    data = raw ? JSON.parse(raw) : {};
+  } catch {
+    throw Object.assign(
+      new Error(
+        raw.trim().startsWith("Internal Server Error")
+          ? "Sign-in API crashed on the server. Try again after the latest deploy finishes."
+          : raw.slice(0, 200) || "Sign-in failed.",
+      ),
+      { code: "InternalServerError" },
+    );
+  }
+
   if (!res.ok) {
     throw Object.assign(new Error(data.error || "Sign-in failed."), {
       code: data.code,
     });
+  }
+
+  if (!data.username || !data.idToken || !data.accessToken || !data.refreshToken) {
+    throw new Error("Sign-in response was incomplete.");
   }
 
   writeStoredAuth({
