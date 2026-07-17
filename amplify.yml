@@ -10,6 +10,7 @@ applications:
           commands:
             # Amplify build env vars are not available to Next.js SSR by default.
             # Write them into .env.production so API routes can read them at runtime.
+            # Use webpack: Turbopack's hashed serverExternalPackages break @aws-sdk on Amplify.
             - env | grep -e COGNITO_CLIENT_SECRET -e S3_BUCKET_NAME -e NEXT_PUBLIC_ >> .env.production
             - npm run build
       artifacts:
