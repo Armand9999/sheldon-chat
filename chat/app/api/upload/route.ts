@@ -69,7 +69,7 @@ export async function POST(request: Request) {
     console.error("upload_error", err);
     const message =
       e.name === "AccessDenied" || e.Code === "AccessDenied"
-        ? "Upload failed: Amplify compute role lacks s3:PutObject on intake/native/*."
+        ? "Upload failed: S3 rejected PutObject (check Amplify compute role and bucket policy)."
         : e.message || "Failed to upload file.";
     return NextResponse.json({ error: message }, { status: 500 });
   }

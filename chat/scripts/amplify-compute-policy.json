@@ -8,6 +8,17 @@
       "Resource": "arn:aws:s3:::YOUR_BUCKET_NAME/intake/native/*"
     },
     {
+      "Sid": "SheldonListBucketPrefixes",
+      "Effect": "Allow",
+      "Action": ["s3:ListBucket"],
+      "Resource": "arn:aws:s3:::YOUR_BUCKET_NAME",
+      "Condition": {
+        "StringLike": {
+          "s3:prefix": ["intake/native/*", "processed/*", "manifest/*"]
+        }
+      }
+    },
+    {
       "Sid": "SheldonReadProcessedAndManifest",
       "Effect": "Allow",
       "Action": ["s3:GetObject", "s3:HeadObject"],

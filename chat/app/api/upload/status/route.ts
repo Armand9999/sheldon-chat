@@ -23,10 +23,12 @@ export async function GET(request: Request) {
   } catch (err) {
     const e = err as { message?: string; name?: string; Code?: string };
     console.error("upload_status_error", err);
-    const message =
-      e.name === "AccessDenied" || e.Code === "AccessDenied"
-        ? "Status check failed: Amplify compute role lacks s3:GetObject/HeadObject."
-        : e.message || "Failed to check ingestion status.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json(
+      {
+        error: e.message || "Failed to check ingestion status.",
+        code: e.name || e.Code,
+      },
+      { status: 500 },
+    );
   }
 }

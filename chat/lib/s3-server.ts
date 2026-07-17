@@ -15,6 +15,31 @@ export type IngestionStatus = {
   error: string | null;
 };
 
+/**
+ * S3 returns 403 AccessDenied (not 404) for missing keys when the caller
+ * has GetObject/HeadObject but not ListBucket. During ingestion polling the
+ * processed/manifest objects often do not exist yet, so treat AccessDenied
+ * as "not ready" rather than a hard IAM failure.
+ */
+function isAbsentObjectError(err: unknown): boolean {
+  const e = err as {
+    name?: string;
+    Code?: string;
+    $metadata?: { httpStatusCode?: number };
+  };
+  const status = e.$metadata?.httpStatusCode;
+  return (
+    e.name === "NotFound" ||
+    e.Code === "NotFound" ||
+    e.name === "NoSuchKey" ||
+    e.Code === "NoSuchKey" ||
+    e.name === "AccessDenied" ||
+    e.Code === "AccessDenied" ||
+    status === 404 ||
+    status === 403
+  );
+}
+
 export async function getIngestionStatus(
   processedKey: string,
   intakeKey: string,
@@ -43,12 +68,7 @@ export async function getIngestionStatus(
       error = manifest.error ?? null;
     }
   } catch (err) {
-    const e = err as { name?: string; Code?: string; $metadata?: { httpStatusCode?: number } };
-    const notFound =
-      e.name === "NoSuchKey" ||
-      e.Code === "NoSuchKey" ||
-      e.$metadata?.httpStatusCode === 404;
-    if (!notFound) throw err;
+    if (!isAbsentObjectError(err)) throw err;
   }
 
   let processedExists = false;
@@ -61,13 +81,7 @@ export async function getIngestionStatus(
     );
     processedExists = true;
   } catch (err) {
-    const e = err as { name?: string; Code?: string; $metadata?: { httpStatusCode?: number } };
-    const notFound =
-      e.name === "NotFound" ||
-      e.Code === "NotFound" ||
-      e.name === "NoSuchKey" ||
-      e.$metadata?.httpStatusCode === 404;
-    if (!notFound) throw err;
+    if (!isAbsentObjectError(err)) throw err;
   }
 
   return {
