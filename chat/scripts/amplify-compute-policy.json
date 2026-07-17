@@ -28,9 +28,14 @@
       ]
     },
     {
-      "Sid": "SheldonCognitoSignIn",
+      "Sid": "SheldonCognitoAuth",
       "Effect": "Allow",
-      "Action": ["cognito-idp:InitiateAuth"],
+      "Action": [
+        "cognito-idp:InitiateAuth",
+        "cognito-idp:SignUp",
+        "cognito-idp:ConfirmSignUp",
+        "cognito-idp:ResendConfirmationCode"
+      ],
       "Resource": "arn:aws:cognito-idp:YOUR_REGION:YOUR_ACCOUNT_ID:userpool/YOUR_USER_POOL_ID"
     }
   ]

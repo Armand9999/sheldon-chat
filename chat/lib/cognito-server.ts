@@ -1,8 +1,15 @@
 import { createHmac } from "crypto";
 import {
+  CodeMismatchException,
   CognitoIdentityProviderClient,
+  ConfirmSignUpCommand,
+  ExpiredCodeException,
   InitiateAuthCommand,
+  InvalidPasswordException,
   NotAuthorizedException,
+  ResendConfirmationCodeCommand,
+  SignUpCommand,
+  UsernameExistsException,
   UserNotConfirmedException,
   UserNotFoundException,
 } from "@aws-sdk/client-cognito-identity-provider";
@@ -35,6 +42,53 @@ export function cognitoSecretHash(username: string): string {
     .digest("base64");
 }
 
+function requireClientId(): string {
+  const clientId = getClientId();
+  if (!clientId) {
+    throw new Error("NEXT_PUBLIC_COGNITO_CLIENT_ID is not configured");
+  }
+  return clientId;
+}
+
+function mapCognitoError(err: unknown): never {
+  if (err instanceof NotAuthorizedException) {
+    throw Object.assign(new Error(err.message || "Not authorized"), {
+      code: "NotAuthorizedException",
+    });
+  }
+  if (err instanceof UserNotConfirmedException) {
+    throw Object.assign(new Error(err.message || "User not confirmed"), {
+      code: "UserNotConfirmedException",
+    });
+  }
+  if (err instanceof UserNotFoundException) {
+    throw Object.assign(new Error(err.message || "User not found"), {
+      code: "UserNotFoundException",
+    });
+  }
+  if (err instanceof UsernameExistsException) {
+    throw Object.assign(new Error(err.message || "User already exists"), {
+      code: "UsernameExistsException",
+    });
+  }
+  if (err instanceof InvalidPasswordException) {
+    throw Object.assign(new Error(err.message || "Invalid password"), {
+      code: "InvalidPasswordException",
+    });
+  }
+  if (err instanceof CodeMismatchException) {
+    throw Object.assign(new Error(err.message || "Invalid verification code"), {
+      code: "CodeMismatchException",
+    });
+  }
+  if (err instanceof ExpiredCodeException) {
+    throw Object.assign(new Error(err.message || "Verification code expired"), {
+      code: "ExpiredCodeException",
+    });
+  }
+  throw err;
+}
+
 export type AuthTokens = {
   idToken: string;
   accessToken: string;
@@ -42,16 +96,79 @@ export type AuthTokens = {
   expiresIn: number;
 };
 
+export type SignUpResult = {
+  userConfirmed: boolean;
+  userSub: string;
+};
+
+export async function signUpWithPassword(
+  username: string,
+  password: string,
+): Promise<SignUpResult> {
+  const clientId = requireClientId();
+
+  try {
+    const result = await client.send(
+      new SignUpCommand({
+        ClientId: clientId,
+        Username: username,
+        Password: password,
+        SecretHash: cognitoSecretHash(username),
+        UserAttributes: [{ Name: "email", Value: username }],
+      }),
+    );
+
+    return {
+      userConfirmed: Boolean(result.UserConfirmed),
+      userSub: result.UserSub ?? "",
+    };
+  } catch (err) {
+    mapCognitoError(err);
+  }
+}
+
+export async function confirmSignUpWithCode(
+  username: string,
+  confirmationCode: string,
+): Promise<void> {
+  const clientId = requireClientId();
+
+  try {
+    await client.send(
+      new ConfirmSignUpCommand({
+        ClientId: clientId,
+        Username: username,
+        ConfirmationCode: confirmationCode.trim(),
+        SecretHash: cognitoSecretHash(username),
+      }),
+    );
+  } catch (err) {
+    mapCognitoError(err);
+  }
+}
+
+export async function resendConfirmationCode(username: string): Promise<void> {
+  const clientId = requireClientId();
+
+  try {
+    await client.send(
+      new ResendConfirmationCodeCommand({
+        ClientId: clientId,
+        Username: username,
+        SecretHash: cognitoSecretHash(username),
+      }),
+    );
+  } catch (err) {
+    mapCognitoError(err);
+  }
+}
+
 export async function signInWithPassword(
   username: string,
   password: string,
 ): Promise<AuthTokens> {
-  const clientId = getClientId();
-  if (!clientId) {
-    throw new Error("NEXT_PUBLIC_COGNITO_CLIENT_ID is not configured");
-  }
+  const clientId = requireClientId();
 
-  // App clients with a secret always require SECRET_HASH.
   const authParameters: Record<string, string> = {
     USERNAME: username,
     PASSWORD: password,
@@ -79,30 +196,15 @@ export async function signInWithPassword(
       expiresIn: auth.ExpiresIn ?? 3600,
     };
   } catch (err) {
-    if (err instanceof NotAuthorizedException) {
-      throw Object.assign(new Error(err.message || "Not authorized"), {
-        code: "NotAuthorizedException",
-      });
-    }
-    if (err instanceof UserNotConfirmedException) {
-      throw Object.assign(new Error(err.message || "User not confirmed"), {
-        code: "UserNotConfirmedException",
-      });
-    }
-    if (err instanceof UserNotFoundException) {
-      throw Object.assign(new Error(err.message || "User not found"), {
-        code: "UserNotFoundException",
-      });
-    }
-    throw err;
+    mapCognitoError(err);
   }
 }
 
-export async function refreshTokens(refreshToken: string, username: string): Promise<AuthTokens> {
-  const clientId = getClientId();
-  if (!clientId) {
-    throw new Error("NEXT_PUBLIC_COGNITO_CLIENT_ID is not configured");
-  }
+export async function refreshTokens(
+  refreshToken: string,
+  username: string,
+): Promise<AuthTokens> {
+  const clientId = requireClientId();
 
   const authParameters: Record<string, string> = {
     REFRESH_TOKEN: refreshToken,
