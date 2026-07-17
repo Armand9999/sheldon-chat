@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { isAuthError, requireBearerToken } from "@/lib/auth-server";
-import { getIngestionStatus } from "@/lib/s3-server";
 
 export async function GET(request: Request) {
   const token = requireBearerToken(request);
@@ -18,14 +17,16 @@ export async function GET(request: Request) {
   }
 
   try {
+    const { getIngestionStatus } = await import("@/lib/s3-server");
     const status = await getIngestionStatus(processedKey, intakeKey);
     return NextResponse.json(status);
   } catch (err) {
-    const e = err as { message?: string };
+    const e = err as { message?: string; name?: string; Code?: string };
     console.error("upload_status_error", err);
-    return NextResponse.json(
-      { error: e.message || "Failed to check ingestion status." },
-      { status: 500 },
-    );
+    const message =
+      e.name === "AccessDenied" || e.Code === "AccessDenied"
+        ? "Status check failed: Amplify compute role lacks s3:GetObject/HeadObject."
+        : e.message || "Failed to check ingestion status.";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -1,17 +1,19 @@
 import { createHash } from "crypto";
 
-const REGION = process.env.NEXT_PUBLIC_AWS_REGION ?? process.env.AWS_REGION ?? "us-east-1";
-const BUCKET = process.env.S3_BUCKET_NAME ?? "";
-
 export function getBucketName(): string {
-  if (!BUCKET) {
+  const bucket = process.env.S3_BUCKET_NAME ?? "";
+  if (!bucket) {
     throw new Error("S3_BUCKET_NAME is not configured");
   }
-  return BUCKET;
+  return bucket;
 }
 
 export function getRegion(): string {
-  return REGION;
+  return (
+    process.env.NEXT_PUBLIC_AWS_REGION ??
+    process.env.AWS_REGION ??
+    "us-east-1"
+  );
 }
 
 export function documentId(bucket: string, intakeKey: string): string {

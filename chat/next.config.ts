@@ -6,6 +6,11 @@ const nextConfig: NextConfig = {
   ...(process.env.NODE_ENV === "development"
     ? { turbopack: { root: path.join(__dirname) } }
     : {}),
+  // Prevent Amplify SSR from breaking when bundling the AWS SDK.
+  serverExternalPackages: [
+    "@aws-sdk/client-s3",
+    "@aws-sdk/client-cognito-identity-provider",
+  ],
   experimental: {
     serverActions: {
       bodySizeLimit: "20mb",

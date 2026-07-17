@@ -1,18 +1,14 @@
 import { NextResponse } from "next/server";
-import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { isAuthError, requireBearerToken } from "@/lib/auth-server";
 import {
   ALLOWED_UPLOAD_TYPES,
   buildUploadKeys,
   documentId,
   getBucketName,
-  getRegion,
   MAX_UPLOAD_BYTES,
 } from "@/lib/upload-config";
 
 export const runtime = "nodejs";
-
-const s3 = new S3Client({ region: getRegion() });
 
 export async function POST(request: Request) {
   const token = requireBearerToken(request);
@@ -49,8 +45,9 @@ export async function POST(request: Request) {
     const bucket = getBucketName();
     const { intakeKey, processedKey } = buildUploadKeys(file.name);
     const bytes = Buffer.from(await file.arrayBuffer());
+    const { getS3Client, PutObjectCommand } = await import("@/lib/s3-client");
 
-    await s3.send(
+    await getS3Client().send(
       new PutObjectCommand({
         Bucket: bucket,
         Key: intakeKey,
@@ -68,11 +65,12 @@ export async function POST(request: Request) {
       size: file.size,
     });
   } catch (err) {
-    const e = err as { message?: string; name?: string };
+    const e = err as { message?: string; name?: string; Code?: string };
     console.error("upload_error", err);
-    return NextResponse.json(
-      { error: e.message || "Failed to upload file." },
-      { status: 500 },
-    );
+    const message =
+      e.name === "AccessDenied" || e.Code === "AccessDenied"
+        ? "Upload failed: Amplify compute role lacks s3:PutObject on intake/native/*."
+        : e.message || "Failed to upload file.";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

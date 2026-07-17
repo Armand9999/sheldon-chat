@@ -35,7 +35,18 @@ export async function uploadDocument(
     throw new Error("Could not reach the upload API.");
   }
 
-  const data = await res.json();
+  const raw = await res.text();
+  let data: Partial<UploadResult> & { error?: string } = {};
+  try {
+    data = raw ? (JSON.parse(raw) as Partial<UploadResult> & { error?: string }) : {};
+  } catch {
+    throw new Error(
+      raw.trim().startsWith("Internal Server Error")
+        ? "Upload API crashed on the server. Check Amplify compute logs and S3 permissions."
+        : raw.slice(0, 200) || "Failed to upload file.",
+    );
+  }
+
   if (!res.ok) {
     throw new Error(data.error || "Failed to upload file.");
   }
@@ -52,7 +63,20 @@ export async function fetchIngestionStatus(
     headers: { Authorization: `Bearer ${idToken}` },
   });
 
-  const data = await res.json();
+  const raw = await res.text();
+  let data: Partial<IngestionStatusResponse> & { error?: string } = {};
+  try {
+    data = raw
+      ? (JSON.parse(raw) as Partial<IngestionStatusResponse> & { error?: string })
+      : {};
+  } catch {
+    throw new Error(
+      raw.trim().startsWith("Internal Server Error")
+        ? "Status API crashed on the server. Check Amplify compute logs and S3 permissions."
+        : raw.slice(0, 200) || "Failed to check ingestion status.",
+    );
+  }
+
   if (!res.ok) {
     throw new Error(data.error || "Failed to check ingestion status.");
   }

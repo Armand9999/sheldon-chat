@@ -1,11 +1,9 @@
 import {
   GetObjectCommand,
   HeadObjectCommand,
-  S3Client,
 } from "@aws-sdk/client-s3";
-import { documentId, getBucketName, getRegion } from "@/lib/upload-config";
-
-const s3 = new S3Client({ region: getRegion() });
+import { getS3Client } from "@/lib/s3-client";
+import { documentId, getBucketName } from "@/lib/upload-config";
 
 export type IngestionStatus = {
   processedKey: string;
@@ -23,6 +21,7 @@ export async function getIngestionStatus(
 ): Promise<IngestionStatus> {
   const bucket = getBucketName();
   const docId = documentId(bucket, intakeKey);
+  const s3 = getS3Client();
 
   let manifestStatus: string | null = null;
   let error: string | null = null;
